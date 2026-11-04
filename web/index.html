@@ -1,0 +1,799 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Cluedo blank</title>
+<meta name="theme-color" content="#ffffff">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:ital,wght@1,600;1,800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #1c3f9e;
+    --ink-soft: rgba(28, 63, 158, .35);
+    --paper: #ffffff;
+    --hl: #fff2a0;
+    --yes: #0e8a3e;
+    --no: #6b78a3;
+    --maybe: #e07800;
+    --bad: #ffd0d0;
+    --bad-ink: #d01818;
+    --env: #ffd54a;
+    --line: 2px;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; background: var(--paper); color: var(--ink);
+    font-family: 'Roboto Condensed', 'Arial Narrow', 'Helvetica Neue', Arial, sans-serif;
+    font-style: italic; font-weight: 800;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
+    overscroll-behavior-y: contain;
+    touch-action: manipulation;
+  }
+  #app { max-width: 640px; margin: 0 auto; padding: 8px 6px 64px; }
+
+  .grid { display: grid; grid-template-columns: var(--cols); }
+  .sec { margin-top: 6px; }
+  .sec-rows { border-top: var(--line) solid var(--ink); border-left: var(--line) solid var(--ink); border-radius: 3px; }
+
+  /* Header row */
+  .hdr { align-items: stretch; }
+  .plate {
+    background: var(--ink); color: #fff; border-radius: 5px; height: 36px;
+    display: flex; align-items: center; padding: 0 4px 0 8px; gap: 4px;
+    font-size: 20px; letter-spacing: -.3px; margin-right: 6px;
+  }
+  .plate .t { flex: 1; overflow: hidden; white-space: nowrap; }
+  .reset {
+    position: relative; width: 30px; height: 30px; border-radius: 50%;
+    border: 2px solid rgba(255,255,255,.85); background: transparent; color: #fff;
+    display: grid; place-items: center; padding: 0; flex: none; touch-action: none;
+  }
+  .reset svg.ic { width: 16px; height: 16px; }
+  .reset svg.ring { position: absolute; inset: -4px; width: 34px; height: 34px; transform: rotate(-90deg); pointer-events: none; }
+  .reset svg.ring circle { fill: none; stroke: #ffd54a; stroke-width: 4; stroke-dasharray: 100; stroke-dashoffset: 100; }
+  .reset.holding svg.ring circle { transition: stroke-dashoffset 2s linear; stroke-dashoffset: 0; }
+
+  .ph {
+    height: 36px; border: var(--line) solid var(--ink); border-radius: 3px; margin-left: -2px;
+    display: flex; align-items: center; justify-content: center; overflow: hidden;
+    font-size: 14px; padding: 0 2px; white-space: nowrap; touch-action: none; position: relative;
+    background: #fff;
+  }
+  .ph:first-child { margin-left: 0; }
+  .ph .nm, .plate .t span { display: inline-block; white-space: nowrap; transform-origin: center; }
+  .plate .t span { transform-origin: left center; }
+  .ph.turn { background: var(--ink); color: #fff; }
+  .ph.plus { border-style: dashed; border-color: var(--ink-soft); color: var(--ink-soft); font-size: 24px; font-weight: 600; }
+  .ph.empty::after { content: '✎'; color: var(--ink-soft); font-size: 14px; font-weight: 600; }
+  .ph.lift { opacity: .25; }
+
+  /* Category title */
+  .cat {
+    background: var(--ink); color: #fff; border-radius: 5px 5px 0 0; height: 32px;
+    display: flex; align-items: center; padding-left: 10px; font-size: 22px; margin-right: 0;
+  }
+
+  /* Rows */
+  .lab, .cell { border-right: var(--line) solid var(--ink); border-bottom: var(--line) solid var(--ink); height: 40px; }
+  .lab {
+    display: flex; align-items: center; padding: 0 4px 0 7px; font-size: 15px; letter-spacing: -.3px;
+    white-space: nowrap; overflow: hidden; touch-action: manipulation;
+  }
+  .lab span { display: inline-block; transform-origin: left center; }
+  .row.sel .lab, .row.sel .cell { background: var(--hl); }
+  .row.env .lab { background: var(--env); }
+  .row.env .lab span::before { content: '★ '; }
+
+  .cell { position: relative; display: grid; place-items: center; overflow: hidden; }
+  .cell.plus { border-right-color: transparent; }
+  .cell.plus + * { }
+  .cell.bad { background: var(--bad) !important; box-shadow: inset 0 0 0 2px var(--bad-ink); }
+  .cell .mk { width: 20px; height: 20px; margin-top: -6px; }
+  .cell.auto .mk { opacity: .55; }
+  .cell .cnt { position: absolute; left: 2px; top: 0; font-size: 11px; line-height: 13px; color: var(--ink); font-weight: 800; }
+  .cell .tags {
+    position: absolute; left: 1px; right: 1px; bottom: 0; font-size: 9px; line-height: 10px; font-weight: 600;
+    text-align: center; color: var(--maybe); white-space: normal; overflow-wrap: anywhere; max-height: 20px; overflow: hidden;
+  }
+  .mk.yes { color: var(--yes); } .mk.no { color: var(--no); } .mk.maybe { color: var(--maybe); }
+
+  /* Status bar */
+  #status {
+    position: fixed; left: 0; right: 0; bottom: 0; background: #fff; border-top: 2px solid var(--ink);
+    padding: 8px 12px calc(8px + env(safe-area-inset-bottom)); font-size: 14px; font-weight: 600;
+    display: flex; gap: 6px; align-items: center; flex-wrap: wrap; min-height: 44px;
+  }
+  #status b { font-weight: 800; }
+  .chip { background: var(--hl); border: 1px solid var(--ink-soft); border-radius: 10px; padding: 1px 7px; font-size: 12px; }
+
+  /* Overlays */
+  .overlay { position: fixed; inset: 0; z-index: 50; }
+  .overlay.dim { background: rgba(10, 20, 60, .35); }
+  .pop {
+    position: fixed; background: #fff; border: 2px solid var(--ink); border-radius: 8px; z-index: 51;
+    box-shadow: 0 6px 24px rgba(10,20,60,.25); padding: 4px; min-width: 176px;
+  }
+  .pop button, .sheet button, .dlg button {
+    font: inherit; color: var(--ink); background: none; border: 0; text-align: left; width: 100%;
+    padding: 10px 10px; font-size: 16px; display: flex; align-items: center; gap: 10px; border-radius: 6px;
+  }
+  .pop button:active, .sheet button:active { background: var(--hl); }
+  .pop button svg, .sheet button svg { width: 22px; height: 22px; flex: none; }
+  .pop .ttl { font-size: 12px; font-weight: 600; padding: 4px 10px 2px; opacity: .7; }
+  .sheet {
+    position: fixed; left: 8px; right: 8px; bottom: 8px; z-index: 51; background: #fff; border: 2px solid var(--ink);
+    border-radius: 12px; padding: 6px; max-width: 520px; margin: 0 auto;
+    box-shadow: 0 8px 30px rgba(10,20,60,.3); padding-bottom: calc(6px + env(safe-area-inset-bottom));
+  }
+  .sheet .ttl, .dlg .ttl { font-size: 18px; padding: 8px 10px 6px; }
+  .sheet .sub, .dlg .sub { font-size: 14px; font-weight: 600; padding: 0 10px 8px; opacity: .8; }
+  .sheet button { font-size: 18px; padding: 13px 12px; }
+  .sheet button.cancel { justify-content: center; opacity: .7; }
+  .dlg {
+    position: fixed; left: 50%; top: 22%; transform: translateX(-50%); width: min(340px, calc(100vw - 32px));
+    z-index: 51; background: #fff; border: 2px solid var(--ink); border-radius: 12px; padding: 8px;
+    box-shadow: 0 8px 30px rgba(10,20,60,.3);
+  }
+  .dlg input {
+    font: inherit; font-size: 18px; color: var(--ink); width: calc(100% - 20px); margin: 4px 10px 10px;
+    border: 2px solid var(--ink); border-radius: 6px; padding: 8px 10px; font-style: italic; -webkit-user-select: text; user-select: text;
+  }
+  .dlg .btns { display: flex; gap: 6px; justify-content: flex-end; padding: 4px; }
+  .dlg .btns button { width: auto; padding: 9px 14px; border: 2px solid var(--ink); }
+  .dlg .btns button.primary { background: var(--ink); color: #fff; }
+  .dlg .btns button.danger { border-color: var(--bad-ink); color: var(--bad-ink); margin-right: auto; }
+
+  .ghost {
+    position: fixed; z-index: 60; pointer-events: none; height: 40px; border: 2px solid var(--ink); border-radius: 4px;
+    background: #fff; display: flex; align-items: center; justify-content: center; font-size: 15px;
+    box-shadow: 0 6px 18px rgba(10,20,60,.3); transform: scale(1.08); white-space: nowrap; overflow: hidden; padding: 0 4px;
+  }
+  .ghost.del { background: var(--bad-ink); color: #fff; border-color: var(--bad-ink); }
+  .ph.drop-before { box-shadow: -4px 0 0 0 var(--maybe); }
+  .ph.drop-after { box-shadow: 4px 0 0 0 var(--maybe); }
+  #delzone {
+    position: fixed; right: 0; top: 0; bottom: 0; width: 26px; z-index: 55; pointer-events: none;
+    background: linear-gradient(90deg, rgba(208,24,24,0), rgba(208,24,24,.35)); display: none;
+  }
+  #delzone.on { display: block; }
+  #delzone.hot { background: linear-gradient(90deg, rgba(208,24,24,.2), rgba(208,24,24,.8)); }
+
+  #toast {
+    position: fixed; left: 50%; bottom: 64px; transform: translateX(-50%); background: var(--ink); color: #fff;
+    padding: 9px 14px; border-radius: 8px; font-size: 14px; font-weight: 600; z-index: 70; max-width: calc(100vw - 32px);
+    opacity: 0; transition: opacity .2s; pointer-events: none; text-align: center;
+  }
+  #toast.on { opacity: 1; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="status"></div>
+<div id="delzone"></div>
+<div id="toast"></div>
+
+<script>
+(() => {
+'use strict';
+
+// ---------- Data ----------
+const CATS = [
+  { title: 'КТО?', items: ['ГРИН', 'МАСТАРД', 'ОРКИД', 'ПИКОК', 'ПЛАМ', 'СКАРЛЕТ'] },
+  { title: 'ЧЕМ?', items: ['ПОДСВЕЧНИК', 'КИНЖАЛ', 'СВИНЦОВАЯ ТРУБА', 'РЕВОЛЬВЕР', 'ВЕРЁВКА', 'ГАЕЧНЫЙ КЛЮЧ'] },
+  { title: 'ГДЕ?', items: ['БАЛЬНЫЙ ЗАЛ', 'БИЛЬЯРДНАЯ', 'ЗИМНИЙ САД', 'СТОЛОВАЯ', 'ХОЛЛ', 'КУХНЯ', 'БИБЛИОТЕКА', 'ГОСТИНАЯ', 'КАБИНЕТ'] },
+];
+const CARDS = [];
+CATS.forEach((c, ci) => c.items.forEach(name => CARDS.push({ id: CARDS.length, cat: ci, name })));
+const ME = 'me';
+const MAX_PLAYERS = 7; // я + 6 соперников
+const KEY = 'cluedo-blank-v1';
+
+const ICONS = {
+  no: '<svg class="mk no" viewBox="0 0 24 24"><path d="M5 5L19 19M19 5L5 19" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"/></svg>',
+  yes: '<svg class="mk yes" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10.5" fill="currentColor"/><path d="M6.8 12.4l3.5 3.5 7-7.6" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  maybe: '<svg class="mk maybe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2.6"/><path d="M9.2 9.3a2.9 2.9 0 1 1 4.1 2.6c-.9.4-1.3 1-1.3 2v.6" stroke="currentColor" stroke-width="2.6" fill="none" stroke-linecap="round"/><circle cx="12" cy="17.6" r="1.6" fill="currentColor"/></svg>',
+  clear: '<svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="2.2"/></svg>',
+  tag: '<svg viewBox="0 0 24 24"><path d="M4 12V4h8l8 8-8 8z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/><circle cx="8.5" cy="8.5" r="1.6" fill="currentColor"/></svg>',
+  reset: '<svg class="ic" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.4-5.7" stroke="currentColor" stroke-width="2.8" fill="none" stroke-linecap="round"/><path d="M4 3.5V8h4.5" stroke="currentColor" stroke-width="2.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+};
+
+// ---------- State ----------
+function defaultPlayers() {
+  return [{ id: ME, name: 'Я', shows: 0 }, { id: 'p1', name: '', shows: 0 }, { id: 'p2', name: '', shows: 0 }, { id: 'p3', name: '', shows: 0 }];
+}
+function freshState(players, seq) {
+  return { v: 1, players, seq: seq || 4, marks: {}, counts: {}, turn: null, sel: [], turnShows: {} };
+}
+function load() {
+  try {
+    const raw = localStorage.getItem(KEY);
+    if (!raw) return null;
+    const s = JSON.parse(raw);
+    if (!s || !Array.isArray(s.players) || !s.players.length || s.players[0].id !== ME) return null;
+    return Object.assign(freshState([]), s);
+  } catch (e) { return null; }
+}
+function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* ignore */ } }
+
+let S = load() || freshState(defaultPlayers());
+
+const player = id => S.players.find(p => p.id === id);
+function mark(pid, cid, create) {
+  let col = S.marks[pid];
+  if (!col) { if (!create) return null; col = S.marks[pid] = {}; }
+  let m = col[cid];
+  if (!m && create) m = col[cid] = { s: '', tags: [] };
+  return m || null;
+}
+function count(pid, cid) { return (S.counts[pid] && S.counts[pid][cid]) || 0; }
+function addCount(pid, cid, d) {
+  const col = S.counts[pid] || (S.counts[pid] = {});
+  col[cid] = Math.max(0, (col[cid] || 0) + d);
+}
+
+// ---------- Initials & tags ----------
+function initialsMap() {
+  const names = S.players.map(p => ({ id: p.id, n: (p.name || '').trim().toUpperCase() }));
+  const res = {};
+  for (const a of names) {
+    if (!a.n) { res[a.id] = '?'; continue; }
+    let k = 1;
+    while (k < a.n.length && names.some(b => b.id !== a.id && b.n && b.n.slice(0, k) === a.n.slice(0, k))) k++;
+    res[a.id] = a.n.slice(0, k);
+  }
+  return res;
+}
+const tagKey = t => t.p ? t.p + ':' + t.n : 'raw:' + t.raw.toUpperCase();
+const tagText = (t, ini) => t.p ? (ini[t.p] || '?') + t.n : t.raw;
+function tagsToString(tags, ini) { return tags.map(t => tagText(t, ini)).join(' '); }
+function parseTags(str, ownerId) {
+  const ini = initialsMap();
+  const out = [];
+  const owner = player(ownerId);
+  for (const tok of str.toUpperCase().split(/[\s,;]+/).filter(Boolean)) {
+    const m = tok.match(/^(\D+?)(\d+)$/);
+    let t = { raw: tok };
+    if (m) {
+      const pid = Object.keys(ini).find(id => ini[id] === m[1] && id !== ownerId);
+      if (pid) {
+        t = { p: pid, n: +m[2] };
+        if (owner) owner.shows = Math.max(owner.shows || 0, t.n);
+      }
+    }
+    if (!out.some(x => tagKey(x) === tagKey(t))) out.push(t);
+  }
+  return out;
+}
+
+// ---------- Deduction ----------
+function derive() {
+  const P = S.players;
+  const eff = {}, auto = {}, bad = {}, manualYN = {};
+  const K = (p, c) => p + '|' + c;
+  for (const p of P) for (const c of CARDS) {
+    const m = mark(p.id, c.id);
+    const s = m ? m.s : '';
+    eff[K(p.id, c.id)] = s;
+    if (s === 'yes' || s === 'no') manualYN[K(p.id, c.id)] = true;
+  }
+  let changed = true, guard = 0;
+  const setAuto = (k, v) => {
+    if (eff[k] === v) return;
+    if (manualYN[k] || auto[k]) { bad[k] = true; return; }
+    eff[k] = v; auto[k] = true; changed = true;
+  };
+  while (changed && guard++ < 60) {
+    changed = false;
+    // Правило 2: «точно есть» у одного → у остальных «точно нет»
+    for (const c of CARDS) {
+      const yes = P.filter(p => eff[K(p.id, c.id)] === 'yes');
+      if (yes.length > 1) { yes.forEach(p => bad[K(p.id, c.id)] = true); continue; }
+      if (yes.length === 1) for (const p of P) if (p !== yes[0]) setAuto(K(p.id, c.id), 'no');
+    }
+    // Правило 1: тройка показа
+    for (const p of P) {
+      if (p.id === ME) continue;
+      const groups = {};
+      for (const c of CARDS) {
+        const m = mark(p.id, c.id);
+        if (!m) continue;
+        for (const t of m.tags) (groups[tagKey(t)] || (groups[tagKey(t)] = [])).push(c.id);
+      }
+      for (const g of Object.values(groups)) {
+        if (g.length < 2) continue;
+        if (g.some(c => eff[K(p.id, c)] === 'yes')) continue;
+        const open = g.filter(c => eff[K(p.id, c)] !== 'no');
+        if (open.length === 1) setAuto(K(p.id, open[0]), 'yes');
+        else if (open.length === 0) g.forEach(c => bad[K(p.id, c)] = true);
+      }
+    }
+  }
+  const env = {};
+  for (const c of CARDS) if (P.every(p => eff[K(p.id, c.id)] === 'no')) env[c.id] = true;
+  return { eff, auto, bad, env, K };
+}
+
+// ---------- Render ----------
+const app = document.getElementById('app');
+let D = null; // last derive
+
+function colsTemplate() {
+  const n = S.players.length;
+  const plus = n < MAX_PLAYERS;
+  const lab = n >= 6 ? '104px' : n >= 5 ? '112px' : '124px';
+  return `${lab} repeat(${n}, minmax(0, 1fr))${plus ? ' 30px' : ''}`;
+}
+
+function render() {
+  D = derive();
+  const ini = initialsMap();
+  const plus = S.players.length < MAX_PLAYERS;
+  app.style.setProperty('--cols', colsTemplate());
+  let h = '';
+  // header
+  h += '<div class="grid hdr">';
+  h += `<div class="plate"><span class="t"><span>ИГРОКИ</span></span><button class="reset" id="reset" aria-label="Сброс">${ICONS.reset}<svg class="ring" viewBox="0 0 36 36"><circle cx="18" cy="18" r="15.9" pathLength="100"/></svg></button></div>`;
+  S.players.forEach((p, i) => {
+    const nm = (p.name || '').trim();
+    const cls = ['ph', i === 0 ? 'first' : '', S.turn === p.id ? 'turn' : '', nm ? '' : 'empty'].join(' ');
+    h += `<div class="${cls}" data-ph="${p.id}"><span class="nm">${esc(nm.toUpperCase())}</span></div>`;
+  });
+  if (plus) h += '<div class="ph plus" data-plus="1">+</div>';
+  h += '</div>';
+  // sections
+  CATS.forEach((cat, ci) => {
+    h += '<div class="sec">';
+    h += `<div class="grid"><div class="cat">${cat.title}</div></div>`;
+    h += '<div class="sec-rows">';
+    for (const c of CARDS.filter(x => x.cat === ci)) {
+      const rowCls = ['grid row', S.sel.includes(c.id) ? 'sel' : '', D.env[c.id] ? 'env' : ''].join(' ');
+      h += `<div class="${rowCls}" data-row="${c.id}">`;
+      h += `<div class="lab" data-lab="${c.id}"><span>${c.name}</span></div>`;
+      for (const p of S.players) {
+        const k = D.K(p.id, c.id);
+        const s = D.eff[k];
+        const m = mark(p.id, c.id);
+        const cnt = count(p.id, c.id);
+        const cls = ['cell', D.auto[k] ? 'auto' : '', D.bad[k] ? 'bad' : ''].join(' ');
+        h += `<div class="${cls}" data-p="${p.id}" data-c="${c.id}">`;
+        if (cnt) h += `<span class="cnt">${cnt}</span>`;
+        if (s) h += ICONS[s];
+        if (m && m.tags.length) h += `<span class="tags">${esc(tagsToString(m.tags, ini))}</span>`;
+        h += '</div>';
+      }
+      if (plus) h += '<div class="cell plus"></div>';
+      h += '</div>';
+    }
+    h += '</div></div>';
+  });
+  app.innerHTML = h;
+  fitLabels();
+  renderStatus();
+  bindReset();
+  save();
+}
+
+function renderStatus() {
+  const st = document.getElementById('status');
+  if (!S.turn || !player(S.turn)) {
+    st.innerHTML = '<span>Тап по имени игрока — его ход</span>';
+    return;
+  }
+  const p = player(S.turn);
+  let h = `<span>Ходит: <b>${esc(p.id === ME ? 'Я' : p.name.toUpperCase())}</b></span>`;
+  if (S.sel.length) h += S.sel.map(id => `<span class="chip">${CARDS[id].name}</span>`).join('');
+  else h += '<span style="opacity:.6">— тапните строки предположения</span>';
+  st.innerHTML = h;
+}
+
+function fitLabels() {
+  app.querySelectorAll('.lab span, .ph .nm, .plate .t span').forEach(sp => {
+    sp.style.transform = '';
+    const box = sp.parentElement;
+    const avail = box.clientWidth - (box.classList.contains('lab') ? 10 : 6);
+    const w = sp.scrollWidth;
+    if (w > avail) sp.style.transform = `scaleX(${(avail / w).toFixed(3)})`;
+  });
+}
+
+function esc(s) { return String(s).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch])); }
+
+let toastT;
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('on');
+  clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('on'), 2200);
+}
+
+// ---------- Overlays ----------
+function closeOverlays() { document.querySelectorAll('.overlay, .pop, .sheet, .dlg').forEach(e => e.remove()); }
+function overlay(dim, onClose) {
+  const o = document.createElement('div');
+  o.className = 'overlay' + (dim ? ' dim' : '');
+  const born = Date.now();
+  o.addEventListener('click', e => { if (e.target === o && Date.now() - born > 400) { closeOverlays(); onClose && onClose(); } });
+  document.body.appendChild(o);
+  return o;
+}
+
+function popMenu(anchor, title, items) {
+  closeOverlays();
+  overlay(false);
+  const pop = document.createElement('div');
+  pop.className = 'pop';
+  pop.innerHTML = (title ? `<div class="ttl">${esc(title)}</div>` : '') + items.map((it, i) => `<button data-i="${i}">${it.icon || ''}<span>${esc(it.label)}</span></button>`).join('');
+  document.body.appendChild(pop);
+  const r = anchor.getBoundingClientRect();
+  const pw = pop.offsetWidth, ph = pop.offsetHeight;
+  let x = r.left + r.width / 2 - pw / 2;
+  x = Math.max(6, Math.min(x, innerWidth - pw - 6));
+  let y = r.bottom + 4;
+  if (y + ph > innerHeight - 50) y = Math.max(6, r.top - ph - 4);
+  pop.style.left = x + 'px'; pop.style.top = y + 'px';
+  pop.addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    closeOverlays(); items[+b.dataset.i].act();
+  });
+}
+
+function sheet(title, sub, items) {
+  closeOverlays();
+  overlay(true);
+  const sh = document.createElement('div');
+  sh.className = 'sheet';
+  sh.innerHTML = `<div class="ttl">${esc(title)}</div>` + (sub ? `<div class="sub">${esc(sub)}</div>` : '') +
+    items.map((it, i) => `<button data-i="${i}">${it.icon || ''}<span>${esc(it.label)}</span></button>`).join('') +
+    '<button class="cancel" data-i="-1">Отмена</button>';
+  document.body.appendChild(sh);
+  sh.addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    closeOverlays();
+    const i = +b.dataset.i; if (i >= 0) items[i].act();
+  });
+}
+
+function dialog({ title, sub, input, placeholder, buttons }) {
+  return new Promise(resolve => {
+    closeOverlays();
+    overlay(true, () => resolve(null));
+    const d = document.createElement('div');
+    d.className = 'dlg';
+    d.innerHTML = `<div class="ttl">${esc(title)}</div>` + (sub ? `<div class="sub">${esc(sub)}</div>` : '') +
+      (input !== undefined ? `<input type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="${esc(placeholder || '')}">` : '') +
+      '<div class="btns">' + buttons.map((b, i) => `<button data-i="${i}" class="${b.cls || ''}">${esc(b.label)}</button>`).join('') + '</div>';
+    document.body.appendChild(d);
+    const inp = d.querySelector('input');
+    if (inp) {
+      inp.value = input;
+      setTimeout(() => { inp.focus(); inp.select(); }, 30);
+      inp.addEventListener('keydown', e => {
+        if (e.key === 'Enter') { const pb = buttons.find(b => b.cls === 'primary'); closeOverlays(); resolve({ value: inp.value, action: pb && pb.value }); }
+      });
+    }
+    d.addEventListener('click', e => {
+      const b = e.target.closest('button'); if (!b) return;
+      const bt = buttons[+b.dataset.i];
+      closeOverlays();
+      resolve({ value: inp ? inp.value : null, action: bt.value });
+    });
+  });
+}
+
+// ---------- Actions ----------
+function setTurn(pid) {
+  S.turn = pid; S.sel = []; S.turnShows = {};
+  render();
+}
+
+function toggleSel(cid) {
+  if (!S.turn) { toast('Сначала тапните по имени того, чей ход'); return; }
+  const counting = S.turn !== ME;
+  const i = S.sel.indexOf(cid);
+  if (i >= 0) {
+    S.sel.splice(i, 1);
+    if (counting) addCount(S.turn, cid, -1);
+  } else {
+    const same = S.sel.find(x => CARDS[x].cat === CARDS[cid].cat);
+    if (same !== undefined) {
+      S.sel.splice(S.sel.indexOf(same), 1);
+      if (counting) addCount(S.turn, same, -1);
+    }
+    S.sel.push(cid);
+    if (counting) addCount(S.turn, cid, 1);
+  }
+  render();
+}
+
+function showNumber(pid) {
+  if (S.turnShows[pid] === undefined) {
+    const p = player(pid);
+    p.shows = (p.shows || 0) + 1;
+    S.turnShows[pid] = p.shows;
+  }
+  return S.turnShows[pid];
+}
+function addTag(m, t) { if (!m.tags.some(x => tagKey(x) === tagKey(t))) m.tags.push(t); }
+
+function canAutoTag(pid) { return S.turn && S.turn !== ME && S.turn !== pid && player(S.turn); }
+
+async function editTags(pid, cid, setMaybe) {
+  const m = mark(pid, cid, true);
+  const ini = initialsMap();
+  const p = player(pid);
+  const res = await dialog({
+    title: setMaybe ? 'Возможно есть' : 'Метки показов',
+    sub: `${p.id === ME ? 'Я' : p.name.toUpperCase() || 'Игрок'} · ${CARDS[cid].name}. Кому показал и номер показа, например «А1 Ж2».`,
+    input: tagsToString(m.tags, ini), placeholder: 'А1 Ж2',
+    buttons: [{ label: 'Отмена', value: null }, { label: 'OK', value: 'ok', cls: 'primary' }],
+  });
+  if (!res || res.action !== 'ok') return;
+  m.tags = parseTags(res.value, pid);
+  if (setMaybe) m.s = 'maybe';
+  render();
+}
+
+function setMaybe(pid, cid) {
+  if (canAutoTag(pid)) {
+    const m = mark(pid, cid, true);
+    m.s = 'maybe';
+    addTag(m, { p: S.turn, n: showNumber(pid) });
+    render();
+  } else {
+    editTags(pid, cid, true);
+  }
+}
+
+function cellMenu(el, pid, cid) {
+  const m = mark(pid, cid);
+  const p = player(pid);
+  const items = [
+    { label: 'Точно нет', icon: ICONS.no, act: () => { mark(pid, cid, true).s = 'no'; render(); } },
+    { label: 'Точно есть', icon: ICONS.yes, act: () => { mark(pid, cid, true).s = 'yes'; render(); } },
+    { label: 'Возможно есть', icon: ICONS.maybe, act: () => setMaybe(pid, cid) },
+  ];
+  if (m && m.tags.length) items.push({ label: 'Изменить метки', icon: ICONS.tag, act: () => editTags(pid, cid, false) });
+  items.push({ label: 'Очистить', icon: ICONS.clear, act: () => { if (S.marks[pid]) delete S.marks[pid][cid]; render(); } });
+  popMenu(el, `${pid === ME ? 'Я' : (p.name || '').toUpperCase() || 'Игрок'} · ${CARDS[cid].name}`, items);
+}
+
+function quickMenu(pid) {
+  const p = player(pid), asker = player(S.turn);
+  const askerName = asker.id === ME ? 'мне' : asker.name.toUpperCase();
+  sheet(p.name.toUpperCase(), `Предположение: ${S.sel.map(c => CARDS[c].name).join(', ')} · спрашивает ${asker.id === ME ? 'Я' : asker.name.toUpperCase()}`, [
+    { label: `Показал карту ${askerName}`, icon: ICONS.maybe, act: () => quickShow(pid) },
+    { label: 'Ничего нет', icon: ICONS.no, act: () => {
+      for (const c of S.sel) { const m = mark(pid, c, true); if (m.s !== 'yes') m.s = 'no'; }
+      render();
+    } },
+    { label: 'Сделать его ход', icon: '', act: () => setTurn(pid) },
+  ]);
+}
+
+function quickShow(pid) {
+  if (S.turn === ME) {
+    sheet('Какую карту показал?', player(pid).name.toUpperCase(), S.sel.map(c => ({
+      label: CARDS[c].name, icon: ICONS.yes, act: () => { mark(pid, c, true).s = 'yes'; render(); },
+    })));
+    return;
+  }
+  const n = showNumber(pid);
+  for (const c of S.sel) {
+    const m = mark(pid, c, true);
+    if (m.s !== 'yes' && m.s !== 'no') m.s = 'maybe';
+    addTag(m, { p: S.turn, n });
+  }
+  render();
+}
+
+async function renameDialog(pid, isNew) {
+  const p = player(pid);
+  const buttons = [];
+  if (pid !== ME && !isNew) buttons.push({ label: 'Удалить', value: 'del', cls: 'danger' });
+  buttons.push({ label: 'Отмена', value: null }, { label: 'OK', value: 'ok', cls: 'primary' });
+  const res = await dialog({ title: pid === ME ? 'Моё имя' : 'Имя игрока', input: p.name || '', placeholder: 'Имя', buttons });
+  if (!res || !res.action) {
+    if (isNew && !(p.name || '').trim()) { S.players = S.players.filter(x => x.id !== pid); render(); }
+    return;
+  }
+  if (res.action === 'del') { confirmDelete(pid); return; }
+  p.name = res.value.trim().slice(0, 20);
+  if (pid === ME && !p.name) p.name = 'Я';
+  render();
+}
+
+async function confirmDelete(pid) {
+  const p = player(pid);
+  const res = await dialog({
+    title: 'Удалить игрока?', sub: `${(p.name || 'Без имени').toUpperCase()} — его отметки пропадут.`,
+    buttons: [{ label: 'Отмена', value: null }, { label: 'Удалить', value: 'del', cls: 'primary' }],
+  });
+  if (res && res.action === 'del') deletePlayer(pid);
+}
+
+function deletePlayer(pid) {
+  const ini = initialsMap();
+  for (const col of Object.values(S.marks)) for (const m of Object.values(col)) {
+    m.tags = m.tags.map(t => t.p === pid ? { raw: ini[pid] + t.n } : t);
+  }
+  delete S.marks[pid]; delete S.counts[pid];
+  if (S.turn === pid) { S.turn = null; S.sel = []; S.turnShows = {}; }
+  S.players = S.players.filter(p => p.id !== pid);
+  render();
+}
+
+function addPlayer() {
+  if (S.players.length >= MAX_PLAYERS) return;
+  const id = 'p' + (++S.seq);
+  S.players.push({ id, name: '', shows: 0 });
+  render();
+  renameDialog(id, true);
+}
+
+async function doReset(full) {
+  const res = await dialog(full
+    ? { title: 'Сбросить всё?', sub: 'Отметки, счётчики и имена игроков будут удалены.', buttons: [{ label: 'Отмена', value: null }, { label: 'Сбросить всё', value: 'ok', cls: 'primary' }] }
+    : { title: 'Новая партия?', sub: 'Все отметки и счётчики будут сброшены. Имена игроков сохранятся.', buttons: [{ label: 'Отмена', value: null }, { label: 'Сбросить', value: 'ok', cls: 'primary' }] });
+  if (!res || res.action !== 'ok') return;
+  if (full) S = freshState(defaultPlayers(), S.seq);
+  else S = freshState(S.players.map(p => ({ id: p.id, name: p.name, shows: 0 })), S.seq);
+  render();
+  toast(full ? 'Всё сброшено' : 'Отметки сброшены');
+}
+
+// ---------- Gestures ----------
+function bindReset() {
+  const b = document.getElementById('reset');
+  let t = null, fired = false;
+  const cancel = () => { clearTimeout(t); t = null; b.classList.remove('holding'); };
+  b.addEventListener('pointerdown', e => {
+    e.preventDefault(); e.stopPropagation();
+    fired = false; b.classList.add('holding');
+    t = setTimeout(() => { fired = true; b.classList.remove('holding'); navigator.vibrate && navigator.vibrate(40); doReset(true); }, 2000);
+  });
+  b.addEventListener('pointerup', e => { e.stopPropagation(); const was = t && !fired; cancel(); if (was) doReset(false); });
+  b.addEventListener('pointerleave', cancel);
+  b.addEventListener('pointercancel', cancel);
+  b.addEventListener('contextmenu', e => e.preventDefault());
+}
+
+document.addEventListener('contextmenu', e => e.preventDefault());
+
+// Cells & labels — click
+app.addEventListener('click', e => {
+  const lab = e.target.closest('[data-lab]');
+  if (lab) { toggleSel(+lab.dataset.lab); return; }
+  const cell = e.target.closest('.cell[data-p]');
+  if (cell) { cellMenu(cell, cell.dataset.p, +cell.dataset.c); return; }
+});
+
+// Header — tap / double tap / long press drag
+const LONG = 450, DBL = 260, MOVE_TOL = 10;
+let hs = null;          // header gesture state
+let lastTap = { id: null, t: 0, timer: null };
+
+app.addEventListener('pointerdown', e => {
+  const plus = e.target.closest('[data-plus]');
+  if (plus) { e.preventDefault(); addPlayer(); return; }
+  const ph = e.target.closest('[data-ph]');
+  if (!ph) return;
+  e.preventDefault();
+  const id = ph.dataset.ph;
+  hs = { id, el: ph, x0: e.clientX, y0: e.clientY, drag: false, moved: false, pointerId: e.pointerId };
+  try { ph.setPointerCapture(e.pointerId); } catch (_) {}
+  if (id !== ME) hs.timer = setTimeout(() => startDrag(e), LONG);
+});
+
+app.addEventListener('pointermove', e => {
+  if (!hs || e.pointerId !== hs.pointerId) return;
+  const dx = e.clientX - hs.x0, dy = e.clientY - hs.y0;
+  if (!hs.drag) {
+    if (Math.hypot(dx, dy) > MOVE_TOL) { hs.moved = true; clearTimeout(hs.timer); }
+    return;
+  }
+  moveDrag(e);
+});
+
+app.addEventListener('pointerup', e => {
+  if (!hs || e.pointerId !== hs.pointerId) return;
+  clearTimeout(hs.timer);
+  const g = hs; hs = null;
+  if (g.drag) { endDrag(e, g); return; }
+  if (g.moved) return;
+  headerTap(g.id);
+});
+app.addEventListener('pointercancel', () => { if (hs) { clearTimeout(hs.timer); if (hs.drag) cleanupDrag(hs); hs = null; } });
+
+function headerTap(id) {
+  const p = player(id); if (!p) return;
+  const now = Date.now();
+  if (lastTap.id === id && now - lastTap.t < DBL) {
+    clearTimeout(lastTap.timer); lastTap = { id: null, t: 0, timer: null };
+    renameDialog(id);
+    return;
+  }
+  if (!(p.name || '').trim()) { renameDialog(id); return; }
+  clearTimeout(lastTap.timer);
+  lastTap = { id, t: now, timer: setTimeout(() => { lastTap.id = null; singleHeaderTap(id); }, DBL) };
+}
+
+function singleHeaderTap(id) {
+  if (S.sel.length && S.turn && id !== S.turn && id !== ME) { quickMenu(id); return; }
+  if (S.sel.length && S.turn && id === ME && S.turn !== ME) { toast('Если вам показали карту — отметьте её в столбце показавшего'); }
+  if (id !== S.turn) setTurn(id);
+}
+
+// Drag
+const ghostEl = document.createElement('div'); ghostEl.className = 'ghost';
+const delzone = document.getElementById('delzone');
+function startDrag(e) {
+  if (!hs) return;
+  hs.drag = true;
+  navigator.vibrate && navigator.vibrate(25);
+  const r = hs.el.getBoundingClientRect();
+  hs.rect = r; hs.offX = hs.x0 - r.left;
+  ghostEl.textContent = hs.el.textContent || '…';
+  ghostEl.style.width = r.width + 'px';
+  ghostEl.style.left = r.left + 'px'; ghostEl.style.top = r.top + 'px';
+  ghostEl.classList.remove('del');
+  document.body.appendChild(ghostEl);
+  hs.el.classList.add('lift');
+  delzone.classList.add('on');
+}
+function headerRects() {
+  return [...app.querySelectorAll('[data-ph]')].map(el => ({ id: el.dataset.ph, el, r: el.getBoundingClientRect() }));
+}
+function dropTarget(x) {
+  const rects = headerRects().filter(h => h.id !== ME);
+  let idx = rects.length; // position among non-me players
+  for (let i = 0; i < rects.length; i++) { if (x < rects[i].r.left + rects[i].r.width / 2) { idx = i; break; } }
+  return { idx, rects };
+}
+function inDeleteZone(x, g) { return x >= innerWidth - 22 && x - g.x0 > 6; }
+function moveDrag(e) {
+  const g = hs;
+  ghostEl.style.left = Math.min(e.clientX - g.offX, innerWidth - g.rect.width - 4) + 'px';
+  const del = inDeleteZone(e.clientX, g);
+  ghostEl.classList.toggle('del', del);
+  ghostEl.textContent = del ? 'Удалить' : (g.el.textContent || '…');
+  delzone.classList.toggle('hot', del);
+  app.querySelectorAll('.drop-before, .drop-after').forEach(x => x.classList.remove('drop-before', 'drop-after'));
+  if (!del) {
+    const { idx, rects } = dropTarget(e.clientX);
+    if (idx < rects.length) rects[idx].el.classList.add('drop-before');
+    else if (rects.length) rects[rects.length - 1].el.classList.add('drop-after');
+  }
+}
+function cleanupDrag(g) {
+  ghostEl.remove();
+  delzone.classList.remove('on', 'hot');
+  g.el.classList.remove('lift');
+  app.querySelectorAll('.drop-before, .drop-after').forEach(x => x.classList.remove('drop-before', 'drop-after'));
+}
+function endDrag(e, g) {
+  const del = inDeleteZone(e.clientX, g);
+  const { idx } = dropTarget(e.clientX);
+  cleanupDrag(g);
+  if (del) { confirmDelete(g.id); return; }
+  const others = S.players.filter(p => p.id !== ME);
+  const from = others.findIndex(p => p.id === g.id);
+  const moving = others.splice(from, 1)[0];
+  let to = idx; if (idx > from) to--;
+  others.splice(to, 0, moving);
+  S.players = [S.players[0], ...others];
+  render();
+}
+
+// ---------- Boot ----------
+render();
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitLabels);
+addEventListener('resize', fitLabels);
+})();
+</script>
+</body>
+</html>
