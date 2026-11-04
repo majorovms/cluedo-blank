@@ -213,7 +213,7 @@ function defaultPlayers() {
   return [{ id: ME, name: 'Я', shows: 0 }, { id: 'p1', name: '', shows: 0 }, { id: 'p2', name: '', shows: 0 }, { id: 'p3', name: '', shows: 0 }];
 }
 function freshState(players, seq) {
-  return { v: 1, players, seq: seq || 4, marks: {}, counts: {}, turn: null, sel: [], turnShows: {} };
+  return { v: 1, players, seq: seq || 4, marks: {}, counts: {}, turn: null, sel: [], turnShows: {}, started: false };
 }
 function load() {
   try {
@@ -221,6 +221,7 @@ function load() {
     if (!raw) return null;
     const s = JSON.parse(raw);
     if (!s || !Array.isArray(s.players) || !s.players.length || s.players[0].id !== ME) return null;
+    if (s.started === undefined) s.started = !!s.turn;
     return Object.assign(freshState([]), s);
   } catch (e) { return null; }
 }
@@ -293,6 +294,10 @@ function derive() {
     if (manualYN[k] || auto[k]) { bad[k] = true; return; }
     eff[k] = v; auto[k] = true; changed = true;
   };
+  // Правило 0: игра началась (был первый ход) и я отметил свои карты → остальные мои карты «точно нет»
+  if (S.started && CARDS.some(c => (mark(ME, c.id) || {}).s === 'yes')) {
+    for (const c of CARDS) if (eff[K(ME, c.id)] !== 'yes') setAuto(K(ME, c.id), 'no');
+  }
   while (changed && guard++ < 60) {
     changed = false;
     // Правило 2: «точно есть» у одного → у остальных «точно нет»
@@ -510,7 +515,7 @@ function dialog({ title, sub, input, placeholder, buttons }) {
 
 // ---------- Actions ----------
 function setTurn(pid) {
-  S.turn = pid; S.sel = []; S.turnShows = {};
+  S.turn = pid; S.sel = []; S.turnShows = {}; S.started = true;
   render();
 }
 
