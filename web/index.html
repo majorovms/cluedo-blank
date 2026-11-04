@@ -32,35 +32,37 @@
     font-style: italic; font-weight: 800;
     -webkit-tap-highlight-color: transparent;
     -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
-    overscroll-behavior-y: contain;
+    overscroll-behavior: none;
     touch-action: manipulation;
+    height: 100%; overflow: hidden;
   }
-  #app { max-width: 640px; margin: 0 auto; padding: 8px 6px 64px; }
+  :root { --rh: 30px; }
+  #app { max-width: 640px; margin: 0 auto; padding: 4px 6px 0; }
 
   .grid { display: grid; grid-template-columns: var(--cols); }
-  .sec { margin-top: 6px; }
+  .sec { margin-top: clamp(2px, calc(var(--rh) * .12), 6px); }
   .sec-rows { border-top: var(--line) solid var(--ink); border-left: var(--line) solid var(--ink); border-radius: 3px; }
 
   /* Header row */
-  .hdr { align-items: stretch; position: sticky; top: 0; z-index: 5; background: var(--paper); padding: 6px 0 4px; margin-top: -6px; }
+  .hdr { align-items: stretch; }
   .plate {
-    background: var(--ink); color: #fff; border-radius: 5px; height: 36px;
+    background: var(--ink); color: #fff; border-radius: 5px; height: clamp(28px, var(--rh), 36px);
     display: flex; align-items: center; padding: 0 4px 0 8px; gap: 4px;
     font-size: 20px; letter-spacing: -.3px; margin-right: 6px;
   }
   .plate .t { flex: 1; overflow: hidden; white-space: nowrap; }
   .reset {
-    position: relative; width: 30px; height: 30px; border-radius: 50%;
+    position: relative; width: 26px; height: 26px; border-radius: 50%;
     border: 2px solid rgba(255,255,255,.85); background: transparent; color: #fff;
     display: grid; place-items: center; padding: 0; flex: none; touch-action: none;
   }
   .reset svg.ic { width: 16px; height: 16px; }
-  .reset svg.ring { position: absolute; inset: -4px; width: 34px; height: 34px; transform: rotate(-90deg); pointer-events: none; }
+  .reset svg.ring { position: absolute; inset: -4px; width: 30px; height: 30px; transform: rotate(-90deg); pointer-events: none; }
   .reset svg.ring circle { fill: none; stroke: #ffd54a; stroke-width: 4; stroke-dasharray: 100; stroke-dashoffset: 100; }
   .reset.holding svg.ring circle { transition: stroke-dashoffset 2s linear; stroke-dashoffset: 0; }
 
   .ph {
-    height: 36px; border: var(--line) solid var(--ink); border-radius: 3px; margin-left: -2px;
+    height: clamp(28px, var(--rh), 36px); border: var(--line) solid var(--ink); border-radius: 3px; margin-left: -2px;
     display: flex; align-items: center; justify-content: center; overflow: hidden;
     font-size: 14px; padding: 0 2px; white-space: nowrap; touch-action: none; position: relative;
     background: #fff;
@@ -75,14 +77,14 @@
 
   /* Category title */
   .cat {
-    background: var(--ink); color: #fff; border-radius: 5px 5px 0 0; height: 32px;
-    display: flex; align-items: center; padding-left: 10px; font-size: 22px; margin-right: 0;
+    background: var(--ink); color: #fff; border-radius: 5px 5px 0 0; height: clamp(17px, calc(var(--rh) * .8), 30px);
+    display: flex; align-items: center; padding-left: 10px; font-size: clamp(14px, calc(var(--rh) * .68), 22px); margin-right: 0;
   }
 
   /* Rows */
-  .lab, .cell { border-right: var(--line) solid var(--ink); border-bottom: var(--line) solid var(--ink); height: 40px; }
+  .lab, .cell { border-right: var(--line) solid var(--ink); border-bottom: var(--line) solid var(--ink); height: var(--rh); }
   .lab {
-    display: flex; align-items: center; padding: 0 4px 0 7px; font-size: 15px; letter-spacing: -.3px;
+    display: flex; align-items: center; padding: 0 4px 0 7px; font-size: clamp(11px, calc(var(--rh) * .6), 15px); letter-spacing: -.3px;
     white-space: nowrap; overflow: hidden; touch-action: manipulation;
   }
   .lab span { display: inline-block; transform-origin: left center; }
@@ -94,23 +96,26 @@
   .cell.plus { border-right-color: transparent; }
   .cell.plus + * { }
   .cell.bad { background: var(--bad) !important; box-shadow: inset 0 0 0 2px var(--bad-ink); }
-  .cell .mk { width: 20px; height: 20px; margin-top: -6px; }
+  .cell .mk { width: min(20px, calc(var(--rh) * .64)); height: min(20px, calc(var(--rh) * .64)); }
+  .cell.tg { place-items: start center; }
+  .cell.tg .mk { margin-top: 1px; width: min(20px, calc(var(--rh) - 13px)); height: min(20px, calc(var(--rh) - 13px)); }
   .cell.auto .mk { opacity: .55; }
-  .cell .cnt { position: absolute; left: 2px; top: 0; font-size: 11px; line-height: 13px; color: var(--ink); font-weight: 800; }
+  .cell .cnt { position: absolute; left: 2px; top: 0; font-size: 10px; line-height: 11px; color: var(--ink); font-weight: 800; }
   .cell .tags {
-    position: absolute; left: 1px; right: 1px; bottom: 0; font-size: 9px; line-height: 10px; font-weight: 600;
-    text-align: center; color: var(--maybe); white-space: normal; overflow-wrap: anywhere; max-height: 20px; overflow: hidden;
+    position: absolute; left: 0; right: 0; bottom: 0; font-size: 9px; line-height: 10px; font-weight: 600;
+    text-align: center; color: var(--maybe); white-space: nowrap;
   }
+  .cell .tags span { display: inline-block; transform-origin: center bottom; }
   .mk.yes { color: var(--yes); } .mk.no { color: var(--no); } .mk.maybe { color: var(--maybe); }
 
   /* Status bar */
   #status {
     position: fixed; left: 0; right: 0; bottom: 0; background: #fff; border-top: 2px solid var(--ink);
-    padding: 8px 12px calc(8px + env(safe-area-inset-bottom)); font-size: 14px; font-weight: 600;
-    display: flex; gap: 6px; align-items: center; flex-wrap: wrap; min-height: 44px;
+    padding: 0 10px env(safe-area-inset-bottom); font-size: 13px; font-weight: 600; height: calc(30px + env(safe-area-inset-bottom));
+    display: flex; gap: 5px; align-items: center; flex-wrap: nowrap; overflow: hidden; white-space: nowrap;
   }
   #status b { font-weight: 800; }
-  .chip { background: var(--hl); border: 1px solid var(--ink-soft); border-radius: 10px; padding: 1px 7px; font-size: 12px; }
+  .chip { background: var(--hl); border: 1px solid var(--ink-soft); border-radius: 10px; padding: 0 6px; font-size: 11px; }
 
   /* Overlays */
   .overlay { position: fixed; inset: 0; z-index: 50; }
@@ -360,11 +365,12 @@ function render() {
         const s = D.eff[k];
         const m = mark(p.id, c.id);
         const cnt = count(p.id, c.id);
-        const cls = ['cell', D.auto[k] ? 'auto' : '', D.bad[k] ? 'bad' : ''].join(' ');
+        const hasTags = !!(m && m.tags.length);
+        const cls = ['cell', D.auto[k] ? 'auto' : '', D.bad[k] ? 'bad' : '', hasTags ? 'tg' : ''].join(' ');
         h += `<div class="${cls}" data-p="${p.id}" data-c="${c.id}">`;
         if (cnt) h += `<span class="cnt">${cnt}</span>`;
         if (s) h += ICONS[s];
-        if (m && m.tags.length) h += `<span class="tags">${esc(tagsToString(m.tags, ini))}</span>`;
+        if (m && m.tags.length) h += `<span class="tags"><span>${esc(tagsToString(m.tags, ini))}</span></span>`;
         h += '</div>';
       }
       if (plus) h += '<div class="cell plus"></div>';
@@ -373,8 +379,9 @@ function render() {
     h += '</div></div>';
   });
   app.innerHTML = h;
-  fitLabels();
   renderStatus();
+  fitHeight();
+  fitLabels();
   bindReset();
   save();
 }
@@ -392,11 +399,27 @@ function renderStatus() {
   st.innerHTML = h;
 }
 
+// Подгоняем высоту строк, чтобы карточка целиком помещалась в экран без прокрутки
+function fitHeight() {
+  const root = document.documentElement;
+  const H = innerHeight - document.getElementById('status').offsetHeight - 2;
+  let rh = parseFloat(root.style.getPropertyValue('--rh')) || 30;
+  const set = v => root.style.setProperty('--rh', v + 'px');
+  set(rh);
+  for (let i = 0; i < 6; i++) {
+    const extra = app.offsetHeight - CARDS.length * rh;
+    const n = Math.max(16, Math.min(46, Math.floor((H - extra) / CARDS.length)));
+    if (n === rh) break;
+    rh = n; set(rh);
+  }
+  while (app.offsetHeight > H && rh > 16) set(--rh);
+}
+
 function fitLabels() {
-  app.querySelectorAll('.lab span, .ph .nm, .plate .t span').forEach(sp => {
+  app.querySelectorAll('.lab span, .ph .nm, .plate .t span, .cell .tags span').forEach(sp => {
     sp.style.transform = '';
-    const box = sp.parentElement;
-    const avail = box.clientWidth - (box.classList.contains('lab') ? 10 : 6);
+    const box = sp.parentElement.classList.contains('tags') ? sp.parentElement.parentElement : sp.parentElement;
+    const avail = box.clientWidth - (box.classList.contains('lab') ? 10 : box.classList.contains('cell') ? 3 : 6);
     const w = sp.scrollWidth;
     if (w > avail) sp.style.transform = `scaleX(${(avail / w).toFixed(3)})`;
   });
@@ -791,8 +814,8 @@ function endDrag(e, g) {
 
 // ---------- Boot ----------
 render();
-if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitLabels);
-addEventListener('resize', fitLabels);
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { fitHeight(); fitLabels(); });
+addEventListener('resize', () => { fitHeight(); fitLabels(); });
 })();
 </script>
 </body>
