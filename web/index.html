@@ -169,6 +169,22 @@
   #delzone.on { display: block; }
   #delzone.hot { background: linear-gradient(90deg, rgba(208,24,24,.2), rgba(208,24,24,.8)); }
 
+  /* Effects */
+  #fx { position: fixed; inset: 0; pointer-events: none; z-index: 45; overflow: hidden; }
+  .pt { position: absolute; left: 0; top: 0; font-style: normal; font-weight: 800; line-height: 1; will-change: transform, opacity; }
+  @keyframes cellPop {
+    0%   { transform: scale(1); box-shadow: 0 0 0 0 rgba(14,138,62,0); }
+    20%  { transform: scale(1.3); box-shadow: 0 0 0 4px rgba(14,138,62,.6); background: #c9f2d8; }
+    100% { transform: scale(1); box-shadow: 0 0 0 14px rgba(14,138,62,0); }
+  }
+  .cell.flash { animation: cellPop 1s ease-out 2; z-index: 3; }
+  .cell.flash .mk { opacity: 1; }
+  @keyframes rowGlow {
+    0%, 100% { background: var(--env); }
+    50% { background: #fffbe0; box-shadow: inset 0 0 0 2px #f2b600; }
+  }
+  .row.found .lab, .row.found .cell:not(.plus) { animation: rowGlow .45s ease-in-out 6; }
+  @media (prefers-reduced-motion: reduce) { .cell.flash, .row.found .lab, .row.found .cell { animation-iteration-count: 1; } }
   #toast {
     position: fixed; left: 50%; bottom: 64px; transform: translateX(-50%); background: var(--ink); color: #fff;
     padding: 9px 14px; border-radius: 8px; font-size: 14px; font-weight: 600; z-index: 70; max-width: calc(100vw - 32px);
@@ -182,6 +198,7 @@
 <div id="status"></div>
 <div id="delzone"></div>
 <div id="toast"></div>
+<div id="fx"></div>
 
 <script>
 (() => {
@@ -340,8 +357,14 @@ function colsTemplate() {
   return `${lab} repeat(${n}, minmax(0, 1fr))${plus ? ' 30px' : ''}`;
 }
 
+let prevFx = null; // что уже было выведено — чтобы анимировать только новое
 function render() {
   D = derive();
+  const autoYes = Object.keys(D.auto).filter(k => D.eff[k] === 'yes');
+  const envIds = Object.keys(D.env).map(Number);
+  const newAuto = prevFx ? autoYes.filter(k => !prevFx.autoYes.includes(k)) : [];
+  const newEnv = prevFx ? envIds.filter(c => !prevFx.envIds.includes(c)) : [];
+  prevFx = { autoYes, envIds };
   const ini = initialsMap();
   const plus = S.players.length < MAX_PLAYERS;
   app.style.setProperty('--cols', colsTemplate());
@@ -384,11 +407,71 @@ function render() {
     h += '</div></div>';
   });
   app.innerHTML = h;
+  requestAnimationFrame(() => playEffects(newAuto, newEnv));
   renderStatus();
   fitHeight();
   fitLabels();
   bindReset();
   save();
+}
+
+// ---------- Effects ----------
+const fx = document.getElementById('fx');
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+function burst(x, y, { chars, colors, n, dist, size, dur }) {
+  if (reduceMotion) return;
+  for (let i = 0; i < n; i++) {
+    const s = document.createElement('span');
+    s.className = 'pt';
+    const ch = chars[i % chars.length], sz = size * (0.8 + Math.random() * 0.5);
+    if (ch === 'check') s.innerHTML = `<svg width="${sz}" height="${sz}" viewBox="0 0 24 24"><path d="M4 12.5l5 5L20 6" stroke="currentColor" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+    else s.textContent = ch;
+    s.style.color = colors[i % colors.length];
+    s.style.fontSize = sz + 'px';
+    fx.appendChild(s);
+    const a = (Math.PI * 2 * i) / n + (Math.random() - 0.5) * 0.6;
+    const d = dist * (0.7 + Math.random() * 0.6);
+    const dx = Math.cos(a) * d, dy = Math.sin(a) * d;
+    const rot = Math.random() * 140 - 70;
+    s.animate([
+      { transform: `translate(${x}px, ${y}px) translate(-50%, -50%) scale(.3)`, opacity: 1 },
+      { transform: `translate(${x + dx}px, ${y + dy}px) translate(-50%, -50%) scale(1.1) rotate(${rot}deg)`, opacity: 1, offset: 0.55 },
+      { transform: `translate(${x + dx * 1.25}px, ${y + dy * 1.25 + 14}px) translate(-50%, -50%) scale(.7) rotate(${rot * 1.5}deg)`, opacity: 0 },
+    ], { duration: dur * (0.85 + Math.random() * 0.3), easing: 'cubic-bezier(.2,.75,.3,1)' }).onfinish = () => s.remove();
+  }
+}
+const center = el => { const r = el.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; };
+
+function playEffects(newAuto, newEnv) {
+  for (const k of newAuto) {
+    const [pid, cid] = k.split('|');
+    const el = app.querySelector(`.cell[data-p="${pid}"][data-c="${cid}"]`);
+    if (!el) continue;
+    el.classList.add('flash');
+    burst(...center(el), { chars: ['check'], colors: ['#0e8a3e', '#19b357', '#0b6e31'], n: 12, dist: 38, size: 14, dur: 950 });
+  }
+  if (newEnv.length) {
+    for (const cid of newEnv) {
+      const row = app.querySelector(`.row[data-row="${cid}"]`);
+      if (!row) continue;
+      row.classList.add('found');
+      const lab = row.querySelector('.lab');
+      burst(...center(lab), { chars: ['★', '✦', '★'], colors: ['#f2b600', '#1c3f9e', '#e07800'], n: 20, dist: 80, size: 17, dur: 1400 });
+      row.querySelectorAll('.cell:not(.plus)').forEach((c, i) => setTimeout(() =>
+        burst(...center(c), { chars: ['✦'], colors: ['#f2b600', '#e07800'], n: 6, dist: 26, size: 11, dur: 800 }), 80 * i));
+    }
+    const solved = CATS.map((_, ci) => CARDS.find(c => c.cat === ci && D.env[c.id]));
+    if (solved.every(Boolean)) {
+      toast('★ Разгадка: ' + solved.map(c => c.name).join(' · ') + ' ★', 6000);
+      setTimeout(() => {
+        const x = innerWidth / 2, y = innerHeight / 2.4;
+        burst(x, y, { chars: ['★', '✦', 'check', '★'], colors: ['#f2b600', '#1c3f9e', '#e07800', '#0e8a3e', '#d01818'], n: 40, dist: 170, size: 22, dur: 1800 });
+        setTimeout(() => burst(x, y, { chars: ['★', '✦'], colors: ['#f2b600', '#1c3f9e', '#e07800'], n: 28, dist: 120, size: 18, dur: 1500 }), 350);
+      }, 500);
+    } else {
+      toast('★ Карта из конверта: ' + newEnv.map(c => CARDS[c].name).join(', '), 3500);
+    }
+  }
 }
 
 function renderStatus() {
@@ -433,10 +516,10 @@ function fitLabels() {
 function esc(s) { return String(s).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch])); }
 
 let toastT;
-function toast(msg) {
+function toast(msg, ms) {
   const t = document.getElementById('toast');
   t.textContent = msg; t.classList.add('on');
-  clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('on'), 2200);
+  clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('on'), ms || 2200);
 }
 
 // ---------- Overlays ----------
