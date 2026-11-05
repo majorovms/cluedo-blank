@@ -272,8 +272,8 @@ function initialsMap() {
   }
   return res;
 }
-const tagKey = t => t.p ? t.p + ':' + t.n : 'raw:' + t.raw.toUpperCase();
-const tagText = (t, ini) => t.p ? (ini[t.p] || '?') + t.n : t.raw;
+const tagKey = t => t.p ? t.p + ':' + (t.n ?? '') : 'raw:' + t.raw.toUpperCase();
+const tagText = (t, ini) => t.p ? (ini[t.p] || '?') + (t.n ?? '') : t.raw;
 function tagsToString(tags, ini) { return tags.map(t => tagText(t, ini)).join(' '); }
 function parseTags(str, ownerId) {
   const ini = initialsMap();
@@ -660,7 +660,30 @@ function setMaybe(pid, cid) {
   }
 }
 
+// Меню моей ячейки: «Точно есть» и кому я показал эту карту
+function myCellMenu(el, cid) {
+  const m = mark(ME, cid);
+  const items = [];
+  if (!m || m.s !== 'yes') items.push({ label: 'Точно есть', icon: ICONS.yes, act: () => { mark(ME, cid, true).s = 'yes'; render(); } });
+  for (const p of S.players) {
+    if (p.id === ME || !(p.name || '').trim()) continue;
+    const shown = !!(m && m.tags.some(t => t.p === p.id));
+    items.push({
+      label: 'Показал ' + p.name.trim(), icon: shown ? ICONS.yes : ICONS.tag,
+      act: () => {
+        const mm = mark(ME, cid, true);
+        if (shown) mm.tags = mm.tags.filter(t => t.p !== p.id);
+        else { mm.tags.push({ p: p.id }); mm.s = 'yes'; }
+        render();
+      },
+    });
+  }
+  items.push({ label: 'Очистить', icon: ICONS.clear, act: () => { if (S.marks[ME]) delete S.marks[ME][cid]; render(); } });
+  popMenu(el, 'Я · ' + CARDS[cid].name, items);
+}
+
 function cellMenu(el, pid, cid) {
+  if (pid === ME) { myCellMenu(el, cid); return; }
   const m = mark(pid, cid);
   const p = player(pid);
   const items = [
@@ -730,7 +753,7 @@ async function confirmDelete(pid) {
 function deletePlayer(pid) {
   const ini = initialsMap();
   for (const col of Object.values(S.marks)) for (const m of Object.values(col)) {
-    m.tags = m.tags.map(t => t.p === pid ? { raw: ini[pid] + t.n } : t);
+    m.tags = m.tags.map(t => t.p === pid ? { raw: ini[pid] + (t.n ?? '') } : t);
   }
   delete S.marks[pid]; delete S.counts[pid];
   if (S.turn === pid) { S.turn = null; S.sel = []; S.turnShows = {}; }
