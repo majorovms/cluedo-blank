@@ -96,7 +96,7 @@
   .cell { position: relative; display: grid; place-items: center; overflow: hidden; }
   .cell.plus, .row.sel .cell.plus { border-right-color: transparent; border-bottom-color: transparent; background: transparent; pointer-events: none; }
   .ph.spacer { border-color: transparent; background: transparent; }
-  .cell.run { pointer-events: auto; touch-action: none; color: var(--ink); }
+  .cell.run, .row.sel .cell.run { pointer-events: auto; touch-action: none; color: var(--ink); }
   .cell.run svg { width: min(20px, calc(var(--rh) * .7)); height: min(20px, calc(var(--rh) * .7)); }
   .cell.run.zero svg { opacity: .22; }
   .cell.run .rc { position: absolute; right: 0; bottom: 0; font-size: 10px; line-height: 10px; font-weight: 800; }
