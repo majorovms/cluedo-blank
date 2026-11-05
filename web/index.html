@@ -664,8 +664,9 @@ function setMaybe(pid, cid) {
 function myCellMenu(el, cid) {
   const m = mark(ME, cid);
   const items = [];
-  if (!m || m.s !== 'yes') items.push({ label: 'Точно есть', icon: ICONS.yes, act: () => { mark(ME, cid, true).s = 'yes'; render(); } });
-  for (const p of S.players) {
+  const isYes = !!(m && m.s === 'yes');
+  if (!isYes) items.push({ label: 'Точно есть', icon: ICONS.yes, act: () => { mark(ME, cid, true).s = 'yes'; render(); } });
+  if (isYes) for (const p of S.players) {
     if (p.id === ME || !(p.name || '').trim()) continue;
     const shown = !!(m && m.tags.some(t => t.p === p.id));
     items.push({
@@ -673,12 +674,12 @@ function myCellMenu(el, cid) {
       act: () => {
         const mm = mark(ME, cid, true);
         if (shown) mm.tags = mm.tags.filter(t => t.p !== p.id);
-        else { mm.tags.push({ p: p.id }); mm.s = 'yes'; }
+        else mm.tags.push({ p: p.id });
         render();
       },
     });
   }
-  items.push({ label: 'Очистить', icon: ICONS.clear, act: () => { if (S.marks[ME]) delete S.marks[ME][cid]; render(); } });
+  if (m && (m.s || m.tags.length)) items.push({ label: 'Очистить', icon: ICONS.clear, act: () => { if (S.marks[ME]) delete S.marks[ME][cid]; render(); } });
   popMenu(el, 'Я · ' + CARDS[cid].name, items);
 }
 
