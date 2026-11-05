@@ -95,6 +95,13 @@
 
   .cell { position: relative; display: grid; place-items: center; overflow: hidden; }
   .cell.plus, .row.sel .cell.plus { border-right-color: transparent; border-bottom-color: transparent; background: transparent; pointer-events: none; }
+  .ph.spacer { border-color: transparent; background: transparent; }
+  .cell.run { pointer-events: auto; touch-action: none; color: var(--ink); }
+  .cell.run svg { width: min(20px, calc(var(--rh) * .7)); height: min(20px, calc(var(--rh) * .7)); }
+  .cell.run.zero svg { opacity: .22; }
+  .cell.run .rc { position: absolute; right: 0; bottom: 0; font-size: 10px; line-height: 10px; font-weight: 800; }
+  @keyframes runBump { 0% { transform: scale(1); } 40% { transform: scale(1.35); } 100% { transform: scale(1); } }
+  .cell.run.bump svg { animation: runBump .3s ease-out; }
   .cell.bad { background: var(--bad) !important; box-shadow: inset 0 0 0 2px var(--bad-ink); }
   .cell .mk { width: min(20px, calc(var(--rh) * .64)); height: min(20px, calc(var(--rh) * .64)); }
   .cell.tg { place-items: start center; }
@@ -222,6 +229,7 @@ const ICONS = {
   maybe: '<svg class="mk maybe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2.6"/><path d="M9.2 9.3a2.9 2.9 0 1 1 4.1 2.6c-.9.4-1.3 1-1.3 2v.6" stroke="currentColor" stroke-width="2.6" fill="none" stroke-linecap="round"/><circle cx="12" cy="17.6" r="1.6" fill="currentColor"/></svg>',
   clear: '<svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="2.2"/></svg>',
   tag: '<svg viewBox="0 0 24 24"><path d="M4 12V4h8l8 8-8 8z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/><circle cx="8.5" cy="8.5" r="1.6" fill="currentColor"/></svg>',
+  run: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="15.5" cy="3.8" r="2.2" fill="currentColor" stroke="none"/><path d="M13.5 7.5l-2.5 6"/><path d="M13.3 8.2l3.7 2.8 2.6-1"/><path d="M13.3 8.2l-4 .2-2.3 2.6"/><path d="M11 13.5l3.6 2.7-.8 5"/><path d="M11 13.5l-2.2 4.2H4.5"/></svg>',
   reset: '<svg class="ic" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.4-5.7" stroke="currentColor" stroke-width="2.8" fill="none" stroke-linecap="round"/><path d="M4 3.5V8h4.5" stroke="currentColor" stroke-width="2.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>',
 };
 
@@ -230,7 +238,7 @@ function defaultPlayers() {
   return [{ id: ME, name: 'Я', shows: 0 }, { id: 'p1', name: '', shows: 0 }, { id: 'p2', name: '', shows: 0 }, { id: 'p3', name: '', shows: 0 }];
 }
 function freshState(players, seq) {
-  return { v: 1, players, seq: seq || 4, marks: {}, counts: {}, turn: null, sel: [], turnShows: {}, started: false };
+  return { v: 1, players, seq: seq || 4, marks: {}, counts: {}, turn: null, sel: [], turnShows: {}, started: false, leaves: {} };
 }
 function load() {
   try {
@@ -354,7 +362,7 @@ function colsTemplate() {
   const n = S.players.length;
   const plus = n < MAX_PLAYERS;
   const lab = n >= 6 ? '104px' : n >= 5 ? '112px' : '124px';
-  return `${lab} repeat(${n}, minmax(0, 1fr))${plus ? ' 30px' : ''}`;
+  return `${lab} repeat(${n}, minmax(0, 1fr)) 30px`;
 }
 
 let prevFx = null; // что уже было выведено — чтобы анимировать только новое
@@ -377,7 +385,7 @@ function render() {
     const cls = ['ph', i === 0 ? 'first' : '', S.turn === p.id ? 'turn' : '', nm ? '' : 'empty'].join(' ');
     h += `<div class="${cls}" data-ph="${p.id}"><span class="nm">${esc(nm.toUpperCase())}</span></div>`;
   });
-  if (plus) h += '<div class="ph plus" data-plus="1">+</div>';
+  h += plus ? '<div class="ph plus" data-plus="1">+</div>' : '<div class="ph spacer"></div>';
   h += '</div>';
   // sections
   CATS.forEach((cat, ci) => {
@@ -401,7 +409,10 @@ function render() {
         if (m && m.tags.length) h += `<span class="tags"><span>${esc(tagsToString(m.tags, ini))}</span></span>`;
         h += '</div>';
       }
-      if (plus) h += '<div class="cell plus"></div>';
+      if (c.cat === 2) {
+        const n = (S.leaves || {})[c.id] || 0;
+        h += `<div class="cell plus run${n ? '' : ' zero'}${bumpRun === c.id ? ' bump' : ''}" data-run="${c.id}">${ICONS.run}${n ? `<span class="rc">${n}</span>` : ''}</div>`;
+      } else h += '<div class="cell plus"></div>';
       h += '</div>';
     }
     h += '</div></div>';
@@ -811,6 +822,33 @@ app.addEventListener('click', e => {
 const LONG = 450, DBL = 260, MOVE_TOL = 10;
 let hs = null;          // header gesture state
 let lastTap = { id: null, t: 0, timer: null };
+
+// Счётчик «ушли из комнаты»: тап +1, удержание −1
+let bumpRun = null, runG = null;
+app.addEventListener('pointerdown', e => {
+  const run = e.target.closest('[data-run]');
+  if (!run) return;
+  e.preventDefault();
+  const cid = +run.dataset.run;
+  runG = { cid, done: false, x: e.clientX, y: e.clientY, timer: setTimeout(() => { runG.done = true; changeLeaves(cid, -1); }, 500) };
+});
+app.addEventListener('pointermove', e => {
+  if (runG && !runG.done && Math.hypot(e.clientX - runG.x, e.clientY - runG.y) > 12) { clearTimeout(runG.timer); runG = null; }
+});
+app.addEventListener('pointerup', () => {
+  if (!runG) return;
+  clearTimeout(runG.timer);
+  if (!runG.done) changeLeaves(runG.cid, +1);
+  runG = null;
+});
+app.addEventListener('pointercancel', () => { if (runG) { clearTimeout(runG.timer); runG = null; } });
+function changeLeaves(cid, d) {
+  S.leaves = S.leaves || {};
+  const v = Math.max(0, (S.leaves[cid] || 0) + d);
+  if (v === (S.leaves[cid] || 0)) return;
+  S.leaves[cid] = v;
+  bumpRun = cid; render(); bumpRun = null;
+}
 
 app.addEventListener('pointerdown', e => {
   const plus = e.target.closest('[data-plus]');
