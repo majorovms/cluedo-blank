@@ -604,7 +604,7 @@ function setTurn(pid) {
 
 function toggleSel(cid) {
   if (!S.turn) { toast('Сначала тапните по имени того, чей ход'); return; }
-  const counting = S.turn !== ME;
+  const counting = true; // счётчик предположений ведём для всех, включая меня
   const i = S.sel.indexOf(cid);
   if (i >= 0) {
     S.sel.splice(i, 1);
