@@ -331,6 +331,12 @@ function derive() {
       if (yes.length > 1) { yes.forEach(p => bad[K(p.id, c.id)] = true); continue; }
       if (yes.length === 1) for (const p of P) if (p !== yes[0]) setAuto(K(p.id, c.id), 'no');
     }
+    // Правило 3: в категории все карты, кроме одной, у кого-то на руках → последняя в конверте, у всех «нет»
+    CATS.forEach((_, ci) => {
+      const cards = CARDS.filter(c => c.cat === ci);
+      const free = cards.filter(c => !P.some(p => eff[K(p.id, c.id)] === 'yes'));
+      if (free.length === 1) for (const p of P) setAuto(K(p.id, free[0].id), 'no');
+    });
     // Правило 1: тройка показа
     for (const p of P) {
       if (p.id === ME) continue;
