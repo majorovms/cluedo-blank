@@ -618,6 +618,21 @@ function setTurn(pid) {
   S.turn = pid; S.sel = []; S.turnShows = {}; S.started = true;
   render();
 }
+// Следующий по порядку столбцов игрок (по кругу, безымянные пропускаем)
+function nextAfter(pid) {
+  const P = S.players, i = P.findIndex(p => p.id === pid);
+  for (let k = 1; k <= P.length; k++) {
+    const q = P[(i + k) % P.length];
+    if (q.id === ME || (q.name || '').trim()) return q.id;
+  }
+  return pid;
+}
+// Ход закончился показом карты — передаём ход следующему
+function passTurn() {
+  const nx = nextAfter(S.turn);
+  setTurn(nx);
+  toast('Ход: ' + (nx === ME ? 'Я' : player(nx).name.toUpperCase()), 1500);
+}
 
 function toggleSel(cid) {
   if (!S.turn) { toast('Сначала тапните по имени того, чей ход'); return; }
@@ -692,7 +707,7 @@ function myCellMenu(el, cid) {
         const mm = mark(ME, cid, true);
         if (shown) mm.tags = mm.tags.filter(t => t.p !== p.id);
         else mm.tags.push({ p: p.id });
-        render();
+        if (!shown && S.turn === p.id) passTurn(); else render();
       },
     });
   }
@@ -730,7 +745,7 @@ function quickMenu(pid) {
 function quickShow(pid) {
   if (S.turn === ME) {
     sheet('Какую карту показал?', player(pid).name.toUpperCase(), S.sel.map(c => ({
-      label: CARDS[c].name, icon: ICONS.yes, act: () => { mark(pid, c, true).s = 'yes'; render(); },
+      label: CARDS[c].name, icon: ICONS.yes, act: () => { mark(pid, c, true).s = 'yes'; passTurn(); },
     })));
     return;
   }
@@ -740,7 +755,7 @@ function quickShow(pid) {
     if (m.s !== 'yes' && m.s !== 'no') m.s = 'maybe';
     addTag(m, { p: S.turn, n });
   }
-  render();
+  passTurn();
 }
 
 async function renameDialog(pid, isNew) {
