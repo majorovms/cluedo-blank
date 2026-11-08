@@ -104,15 +104,18 @@
   .cell.run.bump svg { animation: runBump .3s ease-out; }
   .cell.bad { background: var(--bad) !important; box-shadow: inset 0 0 0 2px var(--bad-ink); }
   .cell .mk { width: min(20px, calc(var(--rh) * .64)); height: min(20px, calc(var(--rh) * .64)); }
-  .cell.tg { place-items: start center; }
-  .cell.tg .mk { margin-top: 1px; width: min(20px, calc(var(--rh) - 13px)); height: min(20px, calc(var(--rh) - 13px)); }
+  /* Ячейка с метками: сверху счётчик и маленькая отметка, ниже — метки на всю оставшуюся площадь */
+  .cell.tg { --tb: max(9px, calc(var(--rh) * .36)); }
+  .cell.tg .mk { position: absolute; top: 1px; right: 1px; width: calc(var(--tb) - 1px); height: calc(var(--tb) - 1px); }
+  .cell.tg .cnt { font-size: calc(var(--tb) - 1px); line-height: var(--tb); }
   .cell.auto .mk { opacity: .55; }
   .cell .cnt { position: absolute; left: 2px; top: 0; font-size: 10px; line-height: 11px; color: var(--ink); font-weight: 800; }
   .cell .tags {
-    position: absolute; left: 0; right: 0; bottom: 0; font-size: 9px; line-height: 10px; font-weight: 600;
-    text-align: center; color: var(--maybe); white-space: nowrap;
+    position: absolute; left: 1px; right: 1px; top: var(--tb); bottom: 0; font-size: 9px; line-height: 1.2; font-weight: 700;
+    color: var(--maybe); display: flex; flex-wrap: wrap; align-content: center; justify-content: center;
+    column-gap: .3em; row-gap: 0; overflow: hidden; font-style: normal; letter-spacing: -.02em;
   }
-  .cell .tags span { display: inline-block; transform-origin: center bottom; }
+  .cell .tags span { white-space: nowrap; }
   .mk.yes { color: var(--yes); } .mk.no { color: var(--no); } .mk.maybe { color: var(--maybe); }
 
   /* Status bar */
@@ -367,7 +370,7 @@ let D = null; // last derive
 function colsTemplate() {
   const n = S.players.length;
   const plus = n < MAX_PLAYERS;
-  const lab = n >= 6 ? '104px' : n >= 5 ? '112px' : '124px';
+  const lab = n >= 6 ? '96px' : n >= 5 ? '104px' : '112px';
   return `${lab} repeat(${n}, minmax(0, 1fr)) 30px`;
 }
 
@@ -412,7 +415,7 @@ function render() {
         h += `<div class="${cls}" data-p="${p.id}" data-c="${c.id}">`;
         if (cnt) h += `<span class="cnt">${cnt}</span>`;
         if (s) h += ICONS[s];
-        if (m && m.tags.length) h += `<span class="tags"><span>${esc(tagsToString(m.tags, ini))}</span></span>`;
+        if (m && m.tags.length) h += `<span class="tags">${m.tags.map(t => `<span>${esc(tagText(t, ini))}</span>`).join('')}</span>`;
         h += '</div>';
       }
       if (c.cat === 2) {
@@ -521,12 +524,25 @@ function fitHeight() {
 }
 
 function fitLabels() {
-  app.querySelectorAll('.lab span, .ph .nm, .plate .t span, .cell .tags span').forEach(sp => {
+  app.querySelectorAll('.lab span, .ph .nm, .plate .t span').forEach(sp => {
     sp.style.transform = '';
-    const box = sp.parentElement.classList.contains('tags') ? sp.parentElement.parentElement : sp.parentElement;
-    const avail = box.clientWidth - (box.classList.contains('lab') ? 10 : box.classList.contains('cell') ? 3 : 6);
+    const box = sp.parentElement;
+    const avail = box.clientWidth - (box.classList.contains('lab') ? 10 : 6);
     const w = sp.scrollWidth;
     if (w > avail) sp.style.transform = `scaleX(${(avail / w).toFixed(3)})`;
+  });
+  fitTags();
+}
+
+// Метки: уменьшаем шрифт, пока все метки не поместятся в ячейку (без ограничения снизу)
+function fitTags() {
+  app.querySelectorAll('.cell .tags').forEach(el => {
+    let f = 9;
+    el.style.alignContent = 'flex-start'; // при центрировании «вылезшее» уходит вверх и не попадает в scrollHeight
+    el.style.fontSize = f + 'px';
+    const over = () => el.scrollHeight > el.clientHeight + 0.5 || el.scrollWidth > el.clientWidth + 0.5;
+    while (over() && f > 1.5) { f -= 0.5; el.style.fontSize = f + 'px'; }
+    el.style.alignContent = '';
   });
 }
 
