@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 # Выкладывает web/ на VPS и поднимает лёгкий http-сервер (python3 http.server под systemd).
-# Использование:  ./deploy.sh [user@host]      (SSH_PORT=48213 ./deploy.sh — если ssh не на 22)
-#                 WEB_PORT=8080 ./deploy.sh    — если порт 80 на сервере занят
+# Использование:  ./deploy.sh user@host                 (или DEPLOY_HOST=user@host ./deploy.sh)
+#                 SSH_PORT=48213 ./deploy.sh user@host  — если ssh не на 22
+#                 WEB_PORT=8080 ./deploy.sh user@host   — если порт 80 на сервере занят
 set -euo pipefail
-HOST="${1:-user@your-vps}"
+HOST="${1:-${DEPLOY_HOST:-}}"
+[ -n "$HOST" ] || { echo "Укажите хост: ./deploy.sh user@host" >&2; exit 1; }
 SSH_PORT="${SSH_PORT:-22}"
 WEB_PORT="${WEB_PORT:-80}"
 DIR=/var/www/cluedo-blank
